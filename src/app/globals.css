@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Project global styles */
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 font-sans;
+}
+
+.text-muted-foreground {
+  color: rgba(100, 116, 139, 1); /* slate-500 */
+}
