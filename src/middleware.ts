@@ -88,10 +88,8 @@ export async function middleware(request: NextRequest) {
   // on the client.
   if (request.nextUrl.pathname === '/login' && request.method === 'GET') {
     if (user) {
-      // Check if user is admin/staff and redirect accordingly
-      // We'll do a lightweight check here, but the main logic is in layout
       const url = request.nextUrl.clone()
-      url.pathname = '/'
+      url.pathname = '/dashboard' // Fixed: routes to central dashboard to prevent redirect loop
       return NextResponse.redirect(url)
     }
   }
