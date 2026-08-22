@@ -27,14 +27,63 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Securely fetch the user
+  // Securely fetch the user - Authentication only
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protect the /admin route
-  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // Protect admin routes: Require authentication only
+  // Authorization is handled in the admin layout
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Protect tickets routes: Require authentication
+  if (request.nextUrl.pathname.startsWith('/tickets')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Protect retention route: Require authentication (resident-facing,
+  // same pattern as /profile — not scoped under /admin).
+  if (request.nextUrl.pathname.startsWith('/retention')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Protect profile route: Require authentication.
+  // Any signed-in role (resident/staff/admin) can view/edit their own
+  // profile, so this isn't scoped under /admin.
+  if (request.nextUrl.pathname.startsWith('/profile')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Redirect authenticated users away from login page.
+  // IMPORTANT: only on GET. The login form submits via a Server Action,
+  // which is a POST to this same '/login' path — intercepting that with
+  // a plain redirect here breaks the Action's expected response format
+  // and surfaces as "An unexpected response was received from the server"
+  // on the client.
+  if (request.nextUrl.pathname === '/login' && request.method === 'GET') {
+    if (user) {
+      // Check if user is admin/staff and redirect accordingly
+      // We'll do a lightweight check here, but the main logic is in layout
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
@@ -42,6 +91,14 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder (public files)
+     * - api/auth (auth API routes)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
