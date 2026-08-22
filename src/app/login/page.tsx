@@ -1,6 +1,7 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Building, Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react'
+import { Building, Mail, Lock, ArrowLeft } from 'lucide-react'
 
 export default function LoginPage() {
   async function signIn(formData: FormData) {
@@ -22,33 +23,23 @@ export default function LoginPage() {
       redirect('/login?error=Invalid credentials')
     }
 
-    // Route by role instead of always sending everyone to the staff panel --
-    // a resident signing in here would otherwise land on /admin/utilities
-    // and immediately bounce (or worse, see it, before the layout guard).
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role === 'admin' || profile?.role === 'staff') {
-      redirect('/admin/utilities')
-    }
-
-    redirect('/tickets')
+    // The dashboard handles the final role check and forwards staff/admin
+    // users to their appropriate admin view, so all authenticated users
+    // should land here after a successful sign-in.
+    redirect('/dashboard')
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100/80 p-4">
       <div className="w-full max-w-md">
         {/* Back Button */}
-        <a 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-200" />
           Back to Home
-        </a>
+        </Link>
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">

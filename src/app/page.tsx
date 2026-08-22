@@ -1,6 +1,17 @@
+import { redirect } from 'next/navigation'
 import LiveUtilities from '@/components/LiveUtilities'
+import { createClient } from '@/lib/supabase/server'
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/dashboard')
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-slate-200">
