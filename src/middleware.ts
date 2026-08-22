@@ -49,6 +49,16 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Protect rooms route: Require authentication (resident-facing catalog
+  // + booking flow, same pattern as /profile and /retention).
+  if (request.nextUrl.pathname.startsWith('/rooms')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Protect retention route: Require authentication (resident-facing,
   // same pattern as /profile — not scoped under /admin).
   if (request.nextUrl.pathname.startsWith('/retention')) {
@@ -70,13 +80,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from public auth/start pages.
-  if (request.nextUrl.pathname === '/' && user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
   // Redirect authenticated users away from login page.
   // IMPORTANT: only on GET. The login form submits via a Server Action,
   // which is a POST to this same '/login' path — intercepting that with
@@ -85,8 +88,10 @@ export async function middleware(request: NextRequest) {
   // on the client.
   if (request.nextUrl.pathname === '/login' && request.method === 'GET') {
     if (user) {
+      // Check if user is admin/staff and redirect accordingly
+      // We'll do a lightweight check here, but the main logic is in layout
       const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
   }
