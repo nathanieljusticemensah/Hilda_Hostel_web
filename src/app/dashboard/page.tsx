@@ -2,14 +2,14 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import LiveUtilities from '@/components/LiveUtilities'
+import SignOutButton from '@/components/SignOutButton'
 import {
-  BedDouble,
   DoorOpen,
   AlertCircle,
   Wrench,
   KeyRound,
   Search,
-  LogOut,
+  Megaphone,
 } from 'lucide-react'
 
 export default async function DashboardPage() {
@@ -77,15 +77,7 @@ export default async function DashboardPage() {
                 })}
               </p>
             </div>
-            <form action="/auth/signout" method="POST">
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
-            </form>
+            <SignOutButton variant="header" />
           </div>
         </div>
       </header>
@@ -132,7 +124,7 @@ export default async function DashboardPage() {
           {/* Maintenance Card */}
           <Link
             href="/tickets"
-            className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
+            className="surface-card group hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
           >
             <div className="p-3 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors duration-300 mb-4">
               <Wrench className="w-6 h-6 text-indigo-600" />
@@ -151,7 +143,7 @@ export default async function DashboardPage() {
           {/* Retain Room Card */}
           <Link
             href="/retention"
-            className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
+            className="surface-card group hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
           >
             <div className="p-3 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors duration-300 mb-4">
               <KeyRound className="w-6 h-6 text-indigo-600" />
@@ -170,7 +162,7 @@ export default async function DashboardPage() {
           {/* Book New Room Card */}
           <Link
             href="/rooms"
-            className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
+            className="surface-card group hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
           >
             <div className="p-3 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors duration-300 mb-4">
               <Search className="w-6 h-6 text-indigo-600" />
@@ -185,11 +177,30 @@ export default async function DashboardPage() {
               Browse rooms →
             </span>
           </Link>
+
+          {/* Announcements Card */}
+          <Link
+            href="/announcements"
+            className="surface-card group hover:shadow-lg hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col items-start"
+          >
+            <div className="p-3 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors duration-300 mb-4">
+              <Megaphone className="w-6 h-6 text-indigo-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+              Announcements
+            </h3>
+            <p className="text-sm text-slate-500 flex-1">
+              Notices and emergency contacts from hostel staff
+            </p>
+            <span className="mt-4 text-sm font-medium text-indigo-600 group-hover:text-indigo-700 transition-colors duration-200">
+              View announcements →
+            </span>
+          </Link>
         </div>
 
         {/* Quick Stats Section */}
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="surface-card p-4">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               Role
             </p>
@@ -197,7 +208,7 @@ export default async function DashboardPage() {
               {profile.role}
             </p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="surface-card p-4">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               Room Status
             </p>
@@ -205,7 +216,7 @@ export default async function DashboardPage() {
               {roomDetails ? 'Assigned' : 'Unassigned'}
             </p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="surface-card p-4">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               Member Since
             </p>

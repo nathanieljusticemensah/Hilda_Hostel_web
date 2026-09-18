@@ -16,6 +16,8 @@ import {
   DoorOpen,
   CalendarDays,
   Inbox,
+  Megaphone,
+  Building2,
 } from 'lucide-react'
 
 interface RetentionRequest {
@@ -166,6 +168,20 @@ export default function RetentionsQueuePage() {
                 >
                   <Home className="w-4 h-4" />
                   <span className="hidden sm:inline">Home</span>
+                </Link>
+                <Link
+                  href="/admin/rooms"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Rooms</span>
+                </Link>
+                <Link
+                  href="/admin/announcements"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                >
+                  <Megaphone className="w-4 h-4" />
+                  <span className="hidden sm:inline">Announcements</span>
                 </Link>
                 <Link
                   href="/profile"
