@@ -1,33 +1,49 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { Building, Mail, Lock, ArrowLeft } from 'lucide-react'
+import { Building, Mail, Lock, ArrowLeft, AlertCircle } from 'lucide-react'
 
-export default function LoginPage() {
+const credentialsSchema = z.object({
+  email: z.string().trim().min(1, 'Email is required.').email('Enter a valid email address.'),
+  password: z.string().min(1, 'Password is required.'),
+})
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; next?: string }>
+}) {
   async function signIn(formData: FormData) {
     'use server'
-    const email = String(formData.get('email') || '')
-    const password = String(formData.get('password') || '')
+    const next = String(formData.get('next') || '')
+    // Only honor same-origin, relative paths for `next` to avoid an open
+    // redirect.
+    const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : ''
+    const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : ''
 
-    const supabase = await createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    
-    if (error) {
-      // In a real implementation, you'd want to return error state
-      // For now, we'll redirect back with error param
-      redirect('/login?error=Invalid credentials')
+    const parsed = credentialsSchema.safeParse({
+      email: formData.get('email'),
+      password: formData.get('password'),
+    })
+    if (!parsed.success) {
+      redirect(`/login?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'Invalid input')}${nextParam}`)
     }
 
-    const user = data.user
-    if (!user) {
-      redirect('/login?error=Invalid credentials')
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithPassword(parsed.data)
+
+    if (error || !data.user) {
+      redirect(`/login?error=${encodeURIComponent('Invalid email or password')}${nextParam}`)
     }
 
     // The dashboard handles the final role check and forwards staff/admin
     // users to their appropriate admin view, so all authenticated users
-    // should land here after a successful sign-in.
-    redirect('/dashboard')
+    // should land here after a successful sign-in unless `next` says otherwise.
+    redirect(safeNext || '/dashboard')
   }
+
+  const { error, next } = await searchParams
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100/80 p-4">
@@ -58,6 +74,7 @@ export default function LoginPage() {
 
           {/* Form */}
           <form action={signIn} className="px-8 py-6 space-y-5">
+            {next && <input type="hidden" name="next" value={next} />}
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -109,13 +126,12 @@ export default function LoginPage() {
             </div>
 
             {/* Error Message */}
-            {/* In a real implementation, you'd read error from URL params */}
-            {/* {error && (
+            {error && (
               <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-red-800">{error}</p>
               </div>
-            )} */}
+            )}
 
             {/* Submit Button */}
             <button
