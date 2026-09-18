@@ -1,13 +1,11 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import supabase from '@/lib/supabase/client'
 import NextImage from 'next/image'
-import { 
-  ClipboardList, 
-  Search, 
-  Filter, 
-  ChevronDown,
+import {
+  ClipboardList,
+  Search,
   User,
   Home,
   Calendar,
@@ -15,7 +13,6 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  MoreVertical,
   RefreshCw,
   Loader2,
   ImageOff
@@ -72,9 +69,9 @@ type StatusKey = keyof typeof STATUS_CONFIG
 
 export default function AdminTicketsPage() {
   const [tickets, setTickets] = useState<TicketWithDetails[]>([])
-  const [filteredTickets, setFilteredTickets] = useState<TicketWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -82,10 +79,6 @@ export default function AdminTicketsPage() {
   useEffect(() => {
     fetchTickets()
   }, [])
-
-  useEffect(() => {
-    filterTickets()
-  }, [tickets, searchTerm, statusFilter, categoryFilter])
 
   async function fetchTickets() {
     try {
@@ -99,7 +92,7 @@ export default function AdminTicketsPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setTickets(data as any)
+      setTickets((data ?? []) as TicketWithDetails[])
     } catch (err) {
       console.error('Error fetching tickets:', err)
     } finally {
@@ -107,34 +100,33 @@ export default function AdminTicketsPage() {
     }
   }
 
-  function filterTickets() {
+  const filteredTickets = useMemo(() => {
     let filtered = [...tickets]
 
-    // Search filter
     if (searchTerm) {
+      const term = searchTerm.toLowerCase()
       filtered = filtered.filter(ticket =>
-        ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.rooms?.room_number?.toLowerCase().includes(searchTerm.toLowerCase())
+        ticket.title.toLowerCase().includes(term) ||
+        ticket.description?.toLowerCase().includes(term) ||
+        ticket.profiles?.full_name?.toLowerCase().includes(term) ||
+        ticket.rooms?.room_number?.toLowerCase().includes(term)
       )
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(ticket => ticket.status === statusFilter)
     }
 
-    // Category filter
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(ticket => ticket.category === categoryFilter)
     }
 
-    setFilteredTickets(filtered)
-  }
+    return filtered
+  }, [tickets, searchTerm, statusFilter, categoryFilter])
 
   async function handleStatusChange(ticketId: string, newStatus: string) {
     setUpdatingId(ticketId)
+    setActionError(null)
     try {
       const { error } = await supabase
         .from('maintenance_tickets')
@@ -149,7 +141,7 @@ export default function AdminTicketsPage() {
       )
     } catch (err) {
       console.error('Failed to update status:', err)
-      alert('Failed to update status. Please try again.')
+      setActionError('Failed to update ticket status. Please try again.')
     } finally {
       setUpdatingId(null)
     }
@@ -210,6 +202,21 @@ export default function AdminTicketsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Action Error */}
+        {actionError && (
+          <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 text-sm text-red-800">{actionError}</div>
+            <button
+              onClick={() => setActionError(null)}
+              className="text-red-400 hover:text-red-600 transition-colors"
+              aria-label="Dismiss"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -288,8 +295,8 @@ export default function AdminTicketsPage() {
                     {/* Photo Thumbnail */}
                     {ticket.image_url ? (
                       <div className="flex-shrink-0 w-full lg:w-40 h-48 lg:h-40 relative rounded-lg overflow-hidden border border-slate-200">
-                        <NextImage 
-                          src={ticket.image_url}
+                        <NextImage
+                          src={`${ticket.image_url}?tr=w-320,h-320,c-at_max`}
                           alt="Issue"
                           fill
                           className="object-cover"
@@ -376,7 +383,7 @@ export default function AdminTicketsPage() {
                         </span>
                         <span className="text-slate-300">•</span>
                         <span className="flex items-center gap-1">
-                          <div className={`h-1.5 w-1.5 rounded-full ${status.dotColor}`} />
+                          <StatusIcon className="w-3 h-3" />
                           {status.label}
                         </span>
                       </div>
