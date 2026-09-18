@@ -1,17 +1,57 @@
 import LiveUtilities from '@/components/LiveUtilities'
 import SignOutButton from '@/components/SignOutButton'
-import { 
-  LayoutDashboard, 
-  Settings, 
+import { createClient } from '@/lib/supabase/server'
+import {
+  LayoutDashboard,
+  Settings,
   Home,
   Zap,
   Shield,
   Activity,
-  User
+  User,
+  Megaphone,
+  Building2
 } from 'lucide-react'
 import Link from 'next/link'
 
-export default function UtilitiesAdminPage() {
+const GOOD_STATUSES = new Set(['flowing', 'grid'])
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const minutes = Math.round(diffMs / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`
+  const days = Math.round(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
+type UtilityActivityRow = {
+  type: string
+  status: string
+  updated_at: string | null
+  profiles: { full_name: string } | null
+}
+
+export default async function UtilitiesAdminPage() {
+  const supabase = await createClient()
+
+  const { data: utilities } = await supabase
+    .from('utilities')
+    .select('type, status, updated_at, profiles(full_name)')
+    .order('updated_at', { ascending: false })
+
+  const activity = (utilities ?? []) as unknown as UtilityActivityRow[]
+  const totalUtilities = activity.length
+  const currentlyOn = activity.filter((u) => GOOD_STATUSES.has(u.status)).length
+
+  const { count: residentCount } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('role', 'resident')
+    .not('room_id', 'is', null)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/60">
       {/* Header */}
@@ -51,6 +91,20 @@ export default function UtilitiesAdminPage() {
                   <span className="hidden sm:inline">Home</span>
                 </Link>
                 <Link
+                  href="/admin/rooms"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Rooms</span>
+                </Link>
+                <Link
+                  href="/admin/announcements"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                >
+                  <Megaphone className="w-4 h-4" />
+                  <span className="hidden sm:inline">Announcements</span>
+                </Link>
+                <Link
                   href="/profile"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
                 >
@@ -88,38 +142,34 @@ export default function UtilitiesAdminPage() {
         </div>
 
         {/* Stats Overview */}
-        {/* NOTE: these three numbers and the "Recent Activity" feed below are
-            hardcoded placeholders, not wired to real data yet. Left as-is
-            since that's new scope (would need an activity log table +
-            queries), not a bug fix — flagging so it doesn't ship by accident. */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="surface-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Utilities</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">6</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{totalUtilities}</p>
               </div>
               <div className="p-2.5 bg-indigo-50 rounded-lg">
                 <Settings className="w-5 h-5 text-indigo-600" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="surface-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Currently On</p>
-                <p className="text-2xl font-bold text-emerald-600 mt-1">3</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1">{currentlyOn}</p>
               </div>
               <div className="p-2.5 bg-emerald-50 rounded-lg">
                 <Zap className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="surface-card p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Active Users</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">12</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Residents Housed</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{residentCount ?? 0}</p>
               </div>
               <div className="p-2.5 bg-amber-50 rounded-lg">
                 <Shield className="w-5 h-5 text-amber-600" />
@@ -129,7 +179,7 @@ export default function UtilitiesAdminPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="surface-card rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -152,8 +202,8 @@ export default function UtilitiesAdminPage() {
           </div>
         </div>
 
-        {/* Activity Log (Optional Enhancement) */}
-        <div className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Recent Activity - last status change per utility, from the utilities table itself */}
+        <div className="mt-6 surface-card rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-slate-500" />
@@ -161,23 +211,24 @@ export default function UtilitiesAdminPage() {
             </div>
           </div>
           <div className="p-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-sm">
-                <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-slate-600">Lights turned ON by John Doe</span>
-                <span className="text-xs text-slate-400 ml-auto">2 min ago</span>
+            {activity.length === 0 ? (
+              <p className="text-sm text-slate-500">No status changes recorded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {activity.map((u) => (
+                  <div key={u.type} className="flex items-center gap-3 text-sm">
+                    <div className={`h-2 w-2 rounded-full ${GOOD_STATUSES.has(u.status) ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                    <span className="text-slate-600 capitalize">
+                      {u.type} set to <span className="font-medium">{u.status.replace('_', ' ')}</span>
+                      {u.profiles?.full_name ? ` by ${u.profiles.full_name}` : ''}
+                    </span>
+                    <span className="text-xs text-slate-400 ml-auto whitespace-nowrap">
+                      {u.updated_at ? formatRelativeTime(u.updated_at) : ''}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                <div className="h-2 w-2 rounded-full bg-amber-400" />
-                <span className="text-slate-600">AC turned OFF by Jane Smith</span>
-                <span className="text-xs text-slate-400 ml-auto">15 min ago</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <div className="h-2 w-2 rounded-full bg-slate-300" />
-                <span className="text-slate-600">System status check completed</span>
-                <span className="text-xs text-slate-400 ml-auto">1 hour ago</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </main>
