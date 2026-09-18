@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import NextImage from 'next/image'
 import { Plus, Ticket, Calendar, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 
 // Status configuration for better maintainability
@@ -92,7 +93,7 @@ export default async function TicketsDashboard() {
           </div>
           <h3 className="text-xl font-semibold text-slate-900 mb-2">No issues reported yet</h3>
           <p className="text-slate-500 mb-6 max-w-sm mx-auto">
-            Have a maintenance issue? Report it now and we'll get it resolved quickly.
+            Have a maintenance issue? Report it now and we&apos;ll get it resolved quickly.
           </p>
           <Link
             href="/tickets/new"
@@ -113,17 +114,17 @@ export default async function TicketsDashboard() {
               <Link
                 key={ticket.id}
                 href={`/tickets/${ticket.id}`}
-                className="block bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all duration-200 group"
+                className="surface-card block rounded-xl p-5 hover:shadow-md hover:border-indigo-300 transition-all duration-200 group"
               >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image Thumbnail */}
                   {ticket.image_url && (
-                    <div className="flex-shrink-0">
-                      <img
+                    <div className="relative flex-shrink-0 w-full md:w-24 h-48 md:h-24 rounded-lg overflow-hidden border border-slate-100">
+                      <NextImage
                         src={`${ticket.image_url}?tr=w-200,h-200,c-at_max`}
                         alt="Issue thumbnail"
-                        className="w-full md:w-24 h-48 md:h-24 object-cover rounded-lg border border-slate-100"
-                        loading="lazy"
+                        fill
+                        className="object-cover"
                       />
                     </div>
                   )}
