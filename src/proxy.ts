@@ -49,15 +49,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Protect rooms route: Require authentication (resident-facing catalog
-  // + booking flow, same pattern as /profile and /retention).
-  if (request.nextUrl.pathname.startsWith('/rooms')) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
-    }
-  }
+  // /rooms is the public room catalog (RLS on `rooms` allows anyone to
+  // read it) — applicants can browse without an account. Only the actual
+  // booking step requires auth, and that page enforces it itself
+  // server-side, so it doesn't need a middleware guard here too.
 
   // Protect retention route: Require authentication (resident-facing,
   // same pattern as /profile — not scoped under /admin).

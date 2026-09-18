@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import NextImage from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import {
   BedDouble,
@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Home,
   User,
+  LogIn,
   LayoutGrid,
 } from 'lucide-react'
 import SignOutButton from '@/components/SignOutButton'
@@ -44,15 +45,12 @@ function formatCurrency(amount: number): string {
 export default async function RoomCatalogPage() {
   const supabase = await createClient()
 
-  // 1. Current user
+  // Room catalog is public (RLS on `rooms` allows anyone to read it) —
+  // applicants can browse without an account. Only booking itself requires
+  // sign-in, enforced on the /rooms/[id]/book page.
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    redirect('/login')
-  }
 
   // 2. Global booking phase + academic year
   const { data: settings, error: settingsError } = await supabase
@@ -92,6 +90,21 @@ export default async function RoomCatalogPage() {
 
   const roomList = (rooms ?? []) as RoomAvailability[]
 
+  // `room_availability_current` doesn't expose `images` (it's a fixed-shape
+  // DB function return type), so pull cover photos with a small follow-up
+  // query against `rooms` directly rather than changing the view.
+  const roomIds = roomList.map((r) => r.room_id)
+  const imagesByRoomId = new Map<string, string[]>()
+  if (roomIds.length > 0) {
+    const { data: roomImages } = await supabase
+      .from('rooms')
+      .select('id, images')
+      .in('id', roomIds)
+    for (const r of roomImages ?? []) {
+      imagesByRoomId.set(r.id, r.images ?? [])
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/60">
       {/* Header */}
@@ -119,15 +132,27 @@ export default async function RoomCatalogPage() {
                 <Home className="w-4 h-4" />
                 <span className="hidden sm:inline">Home</span>
               </Link>
-              <Link
-                href="/profile"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
-              >
-                <User className="w-4 h-4" />
-                <span className="hidden sm:inline">Profile</span>
-              </Link>
-              <div className="h-6 w-px bg-slate-200" />
-              <SignOutButton />
+              {user ? (
+                <>
+                  <Link
+                    href="/profile"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="hidden sm:inline">Profile</span>
+                  </Link>
+                  <div className="h-6 w-px bg-slate-200" />
+                  <SignOutButton />
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-all duration-200"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -181,12 +206,23 @@ export default async function RoomCatalogPage() {
             {roomList.map((room) => {
               const isSoldOut = room.available_beds <= 0
               const canBook = isOpenBooking && !isSoldOut
+              const coverImage = imagesByRoomId.get(room.room_id)?.[0]
 
               return (
                 <div
                   key={room.room_id}
                   className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden flex flex-col"
                 >
+                  {coverImage && (
+                    <div className="relative w-full h-40 bg-slate-100">
+                      <NextImage
+                        src={`${coverImage}?tr=w-500,f-auto`}
+                        alt={`Room ${room.room_number}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
                   <div className="p-5 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -218,7 +254,15 @@ export default async function RoomCatalogPage() {
                   </div>
 
                   <div className="px-5 pb-5">
-                    {canBook ? (
+                    {canBook && !user ? (
+                      <Link
+                        href={`/login?next=/rooms/${room.room_id}/book`}
+                        className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white py-2.5 px-4 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        Sign In to Book
+                      </Link>
+                    ) : canBook ? (
                       <Link
                         href={`/rooms/${room.room_id}/book`}
                         className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white py-2.5 px-4 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"

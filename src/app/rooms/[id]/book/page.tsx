@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import NextImage from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import BookingConfirmButton from '@/components/BookingConfirmButton'
 import SignOutButton from '@/components/SignOutButton'
@@ -190,6 +191,15 @@ export default async function BookRoomPage({
 
   const typedRoom = room as RoomAvailability
 
+  // `room_availability_current` doesn't expose `images`; fetch the cover
+  // photo with a small follow-up query against `rooms` directly.
+  const { data: roomImageRow } = await supabase
+    .from('rooms')
+    .select('images')
+    .eq('id', id)
+    .single()
+  const coverImage = roomImageRow?.images?.[0] as string | undefined
+
   // Sold out block
   if (typedRoom.available_beds <= 0) {
     return (
@@ -231,6 +241,11 @@ export default async function BookRoomPage({
 
       {/* Receipt-style summary card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {coverImage && (
+          <div className="relative w-full h-48 bg-slate-100">
+            <NextImage src={`${coverImage}?tr=w-800,f-auto`} alt={roomLabel} fill className="object-cover" />
+          </div>
+        )}
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-indigo-100 rounded-lg">
