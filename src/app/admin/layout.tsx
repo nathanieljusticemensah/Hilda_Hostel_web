@@ -28,9 +28,6 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
 
-  // TEMP DEBUG — remove once the redirect bug is confirmed fixed
-  console.log('[admin/layout] user.id =', user.id, '| profile =', profile, '| error =', error)
-
   if (error || !profile || !['admin', 'staff'].includes(profile.role)) {
     redirect('/')
   }

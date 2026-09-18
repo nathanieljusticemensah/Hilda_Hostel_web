@@ -1,8 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import { z } from 'zod'
 import supabase from '@/lib/supabase/client'
 import { Loader2, CheckCircle2, AlertCircle, Save, User, Phone } from 'lucide-react'
+
+const profileSchema = z.object({
+  full_name: z
+    .string()
+    .trim()
+    .min(2, 'Full name must be at least 2 characters.')
+    .max(120, 'Full name must be under 120 characters.'),
+  phone_number: z
+    .string()
+    .trim()
+    .max(20, 'Phone number must be under 20 characters.')
+    .regex(/^[\d\s+()-]*$/, 'Phone number can only contain digits, spaces, and + ( ) -.')
+    .optional()
+    .or(z.literal('')),
+})
 
 interface ProfileFormProps {
   userId: string
@@ -24,6 +40,12 @@ export default function ProfileForm({
     fullName.trim() !== initialFullName || phoneNumber.trim() !== initialPhoneNumber
 
   async function handleSave() {
+    const parsed = profileSchema.safeParse({ full_name: fullName, phone_number: phoneNumber })
+    if (!parsed.success) {
+      setMessage({ type: 'error', text: parsed.error.issues[0]?.message ?? 'Please check the form and try again.' })
+      return
+    }
+
     setSaving(true)
     setMessage(null)
 
@@ -33,8 +55,8 @@ export default function ProfileForm({
     const { data, error } = await supabase
       .from('profiles')
       .update({
-        full_name: fullName.trim(),
-        phone_number: phoneNumber.trim(),
+        full_name: parsed.data.full_name,
+        phone_number: parsed.data.phone_number ?? '',
       })
       .eq('id', userId)
       .select('full_name, phone_number')

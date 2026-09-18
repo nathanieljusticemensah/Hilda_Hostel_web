@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import supabase from '@/lib/supabase/client'
 import { Droplet, Zap, Loader2 } from 'lucide-react'
 
@@ -53,19 +53,26 @@ export default function LiveUtilities({ canToggle = false }: { canToggle?: boole
   const [userId, setUserId] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [draftEndTime, setDraftEndTime] = useState<Record<string, string>>({})
+  const hasLoadedCache = useRef(false)
 
   // load cache first for offline tolerance
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY)
-      if (raw) setUtilities(JSON.parse(raw))
-    } catch (e) {
-      console.warn('Failed to read utilities cache', e)
+    async function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY)
+        if (raw) setUtilities(JSON.parse(raw))
+      } catch (e) {
+        console.warn('Failed to read utilities cache', e)
+      } finally {
+        hasLoadedCache.current = true
+      }
     }
+    loadCache()
   }, [])
 
-  // persist cache whenever utilities change
+  // persist cache whenever utilities change (skip the initial cache-load render)
   useEffect(() => {
+    if (!hasLoadedCache.current) return
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify(utilities))
     } catch (e) {
@@ -116,7 +123,6 @@ export default function LiveUtilities({ canToggle = false }: { canToggle?: boole
     return () => {
       mounted = false
       try {
-        // @ts-ignore
         channel.unsubscribe()
       } catch (e) {
         console.warn('Failed to unsubscribe supabase channel', e)
@@ -180,20 +186,27 @@ export default function LiveUtilities({ canToggle = false }: { canToggle?: boole
     const isSaving = savingKey === key
 
     return (
-      <div key={key} className="border rounded-md p-3 space-y-3">
+      <div
+        key={key}
+        className="surface-card p-4 sm:p-5 space-y-3 transition-shadow duration-200 hover:shadow-md"
+      >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            {Icon ? <Icon className="h-5 w-5 text-slate-600" /> : null}
+            {Icon ? (
+              <div className="p-2 bg-indigo-50 rounded-xl shrink-0">
+                <Icon className="h-5 w-5 text-indigo-600" />
+              </div>
+            ) : null}
             <div>
-              <div className="text-sm font-medium">{formatted}</div>
+              <div className="text-sm font-semibold text-slate-900">{formatted}</div>
               {u.estimated_end_time ? (
-                <div className="text-xs text-muted-foreground">Ends at: {new Date(u.estimated_end_time).toLocaleString()}</div>
+                <div className="text-xs text-slate-500">Ends at: {new Date(u.estimated_end_time).toLocaleString()}</div>
               ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`h-3 w-3 rounded-full ${TONE_DOT[tone]}`} />
-            <div className="text-sm capitalize font-medium">{u.status?.replace('_', ' ')}</div>
+            <div className={`h-2.5 w-2.5 rounded-full ${TONE_DOT[tone]}`} />
+            <div className="text-sm capitalize font-medium text-slate-700">{u.status?.replace('_', ' ')}</div>
           </div>
         </div>
 
@@ -243,14 +256,26 @@ export default function LiveUtilities({ canToggle = false }: { canToggle?: boole
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Live Utilities</h3>
-        {!online ? <span className="text-xs text-yellow-600">Offline (cached)</span> : <span className="text-xs text-green-600">Live</span>}
+        <h3 className="text-lg font-semibold text-slate-900">Live Utilities</h3>
+        {!online ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            Offline (cached)
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            Live
+          </span>
+        )}
       </div>
 
       {keys.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No utilities available</div>
+        <div className="text-sm text-slate-500 bg-white rounded-2xl border border-dashed border-slate-200 p-6 text-center">
+          No utilities available
+        </div>
       ) : (
-        <div className="grid gap-2">{keys.map((k) => renderUtility(k, utilities[k]))}</div>
+        <div className="grid sm:grid-cols-2 gap-3">{keys.map((k) => renderUtility(k, utilities[k]))}</div>
       )}
     </div>
   )
