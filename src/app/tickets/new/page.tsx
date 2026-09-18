@@ -61,16 +61,15 @@ export default function NewTicketPage() {
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
-  const [user, setUser] = useState<any | null>(null)
+  const [user, setUser] = useState<{ id: string } | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
-  const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
 
   async function uploadToImageKit(file: File) {
-    const authRes = await fetch('/api/imagekit/auth')
+    const authRes = await fetch('/api/imagekit-auth')
     if (!authRes.ok) throw new Error('ImageKit auth failed')
     const auth = await authRes.json()
 
@@ -151,9 +150,9 @@ export default function NewTicketPage() {
       }
 
       router.push('/tickets')
-    } catch (err: any) {
+    } catch (err) {
       console.error(err)
-      setError(err.message || 'Submission failed')
+      setError(err instanceof Error ? err.message : 'Submission failed')
     } finally {
       setLoading(false)
     }
@@ -165,7 +164,7 @@ export default function NewTicketPage() {
     async function checkAuthAndProfile() {
       try {
         const { data } = await supabase.auth.getUser()
-        const currentUser = (data as any)?.user
+        const currentUser = data?.user
         if (!currentUser) {
           router.replace('/login')
           return
@@ -181,14 +180,12 @@ export default function NewTicketPage() {
 
         if (!profileErr && profileData) {
           setRoomId(profileData.room_id ?? null)
-          setRole(profileData.role ?? null)
           if (profileData.role !== 'resident') {
             router.replace('/')
             return
           }
         } else {
           setRoomId(null)
-          setRole(null)
         }
       } catch (err) {
         console.error('Auth check failed', err)
@@ -314,7 +311,7 @@ export default function NewTicketPage() {
           <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-amber-800">
             <p className="font-medium">No Room Assigned</p>
-            <p className="mt-1">You don't have a room assigned yet. Please contact administration before submitting a maintenance ticket.</p>
+            <p className="mt-1">You don&apos;t have a room assigned yet. Please contact administration before submitting a maintenance ticket.</p>
           </div>
         </div>
       )}
@@ -411,6 +408,7 @@ export default function NewTicketPage() {
             </div>
           ) : (
             <div className="relative rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
+              {/* eslint-disable-next-line @next/next/no-img-element -- local FileReader data: URI preview, not a remote/optimizable image */}
               <img
                 src={filePreview}
                 alt="Preview"
